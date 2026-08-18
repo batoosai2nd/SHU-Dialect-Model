@@ -38,4 +38,46 @@ https://xiaohu.shu.edu.cn/museum.html
 
 密钥和服务地址继续只配置在服务器 `.env` 中，不写入 GitHub，也不下发到文学馆展陈电脑。文学馆电脑只需要使用浏览器全屏打开上面的 HTTPS 页面，并允许麦克风权限。
 
-上海话 ASR 的新 HTTP 接口地址、鉴权方式和请求/响应格式仍需以范老师最终提供的信息为准；得到接口定义后，再更新后端适配代码。
+## 新版 ASR/TTS 配置
+
+当前分支已经按范老师提供的两份新版接口文档完成后端适配：
+
+- ASR：`POST {SHANGHAI_ASR_URL}/recognize`，使用 Bearer Key 鉴权。
+- TTS：`GET {TTS_API_BASE}/voice`，后端接收 WAV 后再通过本站 HTTPS 返回给浏览器。
+- `localhost` 或 `127.0.0.1` 指生产服务器自身，不是开发者电脑或文学馆终端。
+- 所有地址、模型名、说话人和密钥均从服务器 `.env` 读取，可参考仓库中的 `.env.example`。
+
+服务器 `.env` 至少需要确认这些值：
+
+```dotenv
+SHANGHAI_ASR_URL=http://127.0.0.1:5000/api/asr
+SHANGHAI_ASR_API_KEY=由范老师填写
+SHANGHAI_ASR_MODEL_ID=test2
+SHANGHAI_ASR_DIALECT=auto
+
+TTS_API_BASE=http://127.0.0.1:54322
+TTS_MODEL=从TTS的models/registry确认
+TTS_SPEAKER=从TTS的models/registry确认
+TTS_LANG=
+```
+
+如果两个语音服务不在小沪应用服务器本机，请把上述地址替换成生产内网中实际可访问的地址；不要把真实密钥提交到 GitHub。
+
+## FFmpeg 依赖
+
+浏览器录音通常是 WebM，而新版 ASR 文档支持 WAV、MP3、OGG、FLAC、AAC、M4A，不包含 WebM。本项目会在后端将录音统一转成 16kHz、单声道、16-bit WAV，因此生产服务器必须安装 FFmpeg，并保证运行小沪服务的账号能在 `PATH` 中执行 `ffmpeg`。
+
+Ubuntu/Debian 可由服务器管理员执行：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y ffmpeg
+ffmpeg -version
+```
+
+部署后建议依次检查：
+
+1. 服务器内部访问 `{SHANGHAI_ASR_URL}/models` 正常。
+2. 服务器内部访问 `{TTS_API_BASE}/models/registry` 正常，并核对 `TTS_MODEL`、`TTS_SPEAKER`。
+3. 校内访问 `http://10.10.36.121/museum.html` 不再返回 404。
+4. 校外通过 `https://xiaohu.shu.edu.cn/museum.html` 授权麦克风，完整测试“录音 → ASR → 大模型 → TTS 播放”。

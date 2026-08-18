@@ -3,13 +3,11 @@ import json
 import asyncio
 import time
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import httpx
-import urllib.parse
 
 from app.db.data_manager import DataManager
 from app.services.session_manager import SessionManager
@@ -79,8 +77,8 @@ async def lifespan(app: FastAPI):
     else:
         log.error("ChatServer: ChatSDK 初始化失败!!!")
 
-    # 预热 ASR 客户端 (扔到后台线程执行，不阻塞 FastAPI 启动)
-    asyncio.create_task(asyncio.to_thread(asr_shanghai_service.init_client_sync))
+    # 后台检查新版 ASR HTTP API，不阻塞 FastAPI 启动。
+    asyncio.create_task(asr_shanghai_service.check_connection())
     museum_cleanup_task = asyncio.create_task(cleanup_expired_museum_sessions())
 
     try:
@@ -228,14 +226,8 @@ async def send_message_full(req: SendMessageReq):
     audio_url = None
     session = await sdk_instance.get_session(req.session_id)
     if session and "小沪" in session.model_name:
-        # 获取原始的 HTTP 链接
-        raw_audio_url = await xiaohu_tts_service.generate_audio(response_text)
-
-        if raw_audio_url:
-            # 【关键修改】：将 HTTP 外部链接进行 URL 编码，包装成我们的内部代理路径
-            encoded_url = urllib.parse.quote(raw_audio_url, safe="")
-            # 因为前端 script.js 使用相对路径，这里直接返回 /api/... 即可
-            audio_url = f"/api/audio/proxy?url={encoded_url}"
+        # 浏览器只访问本站同源地址；内部 TTS 地址不会暴露到前端。
+        audio_url = xiaohu_tts_service.build_audio_url(response_text)
 
     # 将文本和可能存在的音频链接一起返回给前端
     return standard_response(
@@ -300,36 +292,31 @@ async def recognize_audio_api(
             shutil.copyfileobj(file.file, tmp)
             tmp_path = tmp.name
 
-        # 根据前端请求的模型标识，路由分发并转码
+        # 浏览器通常上传 WebM，而新版 ASR 不支持 WebM。两个 ASR 都统一接收
+        # 16kHz、单声道、16-bit WAV，因此这里先在服务器上转码。
         recognized_text = ""
+        wav_path = tmp_path + ".wav"
 
         try:
-            if asr_model == "ali":
-                # 将任意格式转换为 16kHz单声道 wav
-                import pydub
+            from pydub import AudioSegment
 
-                wav_path = tmp_path + ".wav"
-
-                audio = pydub.AudioSegment.from_file(tmp_path)
-                # 强转配置
+            def convert_to_asr_wav():
+                audio = AudioSegment.from_file(tmp_path)
                 audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
                 audio.export(wav_path, format="wav")
 
-                # 请求阿里接口
+            await asyncio.to_thread(convert_to_asr_wav)
+
+            if asr_model == "ali":
                 recognized_text = await asr_ali_service.recognize_audio(wav_path)
-
-                # 用完清理专属转码文件
-                if os.path.exists(wav_path):
-                    os.remove(wav_path)
-
             else:
-                # 默认使用原有的上海话 ASR 接口
-                recognized_text = await asr_shanghai_service.recognize_audio(tmp_path)
+                recognized_text = await asr_shanghai_service.recognize_audio(wav_path)
 
         finally:
-            # 无论成功失败，确保原始临时上传文件被清理
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
+            # 无论成功失败，确保原始文件和转码文件都被清理。
+            for path in (tmp_path, wav_path):
+                if os.path.exists(path):
+                    os.remove(path)
 
         # 结果判断与清洗返回
         if recognized_text and "识别请求发生错误" not in recognized_text:
@@ -338,32 +325,26 @@ async def recognize_audio_api(
             return standard_response(False, "无法识别出文字或服务出错", status_code=500)
 
     except Exception as e:
-        log.error(f"处理语音文件出错: {e}")
-        return standard_response(False, f"服务器内部错误: {str(e)}", status_code=500)
+        log.error(f"处理语音文件出错（请确认服务器已安装 FFmpeg）: {e}")
+        return standard_response(
+            False, "服务器音频处理失败，请联系管理员", status_code=500
+        )
+    finally:
+        await file.close()
 
 
-@app.get("/api/audio/proxy")
-async def proxy_audio(url: str):
-    """
-    音频代理接口：解决 HTTPS 网站无法直接播放 HTTP 音频的混合内容 (Mixed Content) 拦截问题
-    """
-    # 安全校验：防止被恶意利用当作开放代理
-    if not url.startswith(settings.TTS_API_BASE):
-        raise HTTPException(status_code=403, detail="Forbidden URL")
+@app.get("/api/audio/tts")
+async def synthesize_audio(text: str = Query(..., min_length=1, max_length=4000)):
+    """由本站后端调用内部 TTS，避免暴露内网地址及浏览器 CORS/混合内容问题。"""
+    audio_content = await xiaohu_tts_service.synthesize_audio(text)
+    if audio_content is None:
+        raise HTTPException(status_code=502, detail="TTS service unavailable")
 
-    try:
-        # 由后端代为向 HTTP 的 TTS 服务器请求音频文件数据
-        # 加上 trust_env=False 绕过系统代理
-        async with httpx.AsyncClient(trust_env=False, timeout=60.0) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-
-            # 拿到二进制音频数据后，作为本机的 HTTPS 流量返回给前端
-            return Response(content=resp.content, media_type="audio/wav")
-
-    except Exception as e:
-        log.error(f"代理音频失败: {e}")
-        raise HTTPException(status_code=500, detail="Audio proxy failed")
+    return Response(
+        content=audio_content,
+        media_type="audio/wav",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 # 挂载前端静态资源 (必须放在最后面，防止拦截 /api 路由)

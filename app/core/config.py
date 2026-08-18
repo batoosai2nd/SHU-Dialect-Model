@@ -15,6 +15,27 @@ class Settings(BaseSettings):
     TTS_API_BASE: str = ""
     SHANGHAI_ASR_URL: str = ""
 
+    # 上海话 ASR（TeleSpeech HTTP API）
+    SHANGHAI_ASR_API_KEY: str = ""
+    SHANGHAI_ASR_MODEL_ID: str = "test2"
+    SHANGHAI_ASR_DIALECT: str = "auto"
+    SHANGHAI_ASR_USE_KALDI: bool = True
+    SHANGHAI_ASR_ENABLE_PUNCTUATION: bool = True
+    SHANGHAI_ASR_TIMEOUT_SECONDS: float = 120.0
+
+    # 小沪 TTS（Bert-VITS2 FastAPI v2）
+    TTS_MODEL: str = ""
+    TTS_SPEAKER: str = ""
+    # 留空时由 TTS 模型使用自己的默认语言（推荐）。
+    TTS_LANG: str = ""
+    TTS_EMOTION: str = "Neutral"
+    TTS_SDP_RATIO: float = 0.2
+    TTS_NOISE: float = 0.6
+    TTS_NOISE_W: float = 0.8
+    TTS_LENGTH_SCALE: float = 1.0
+    TTS_AUTO_SPLIT: bool = True
+    TTS_TIMEOUT_SECONDS: float = 300.0
+
     # 阿里云 ASR
     ALI_ASR_URL: str = ""
     ALI_ASR_APPKEY: str = ""
