@@ -264,6 +264,13 @@
     };
 
     const observer = new MutationObserver(update);
+    if (!document.body) {
+      document.addEventListener('DOMContentLoaded', improveRecordButtonAccessibility, {
+        once: true,
+      });
+      return;
+    }
+
     observer.observe(document.body, {
       subtree: true,
       childList: true,

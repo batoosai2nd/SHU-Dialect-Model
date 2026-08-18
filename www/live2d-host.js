@@ -334,6 +334,11 @@
   };
 
   const startObserver = () => {
+    if (!document.body) {
+      document.addEventListener('DOMContentLoaded', startObserver, { once: true });
+      return;
+    }
+
     observer.observe(document.body, {
       subtree: true,
       childList: true,
