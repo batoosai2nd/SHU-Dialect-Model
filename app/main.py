@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse, Response
@@ -51,6 +52,20 @@ async def lifespan(app: FastAPI):
     llm_manager = LLMManager()
     sdk_instance = ChatSDK(llm_manager, session_manager)
 
+    async def cleanup_expired_museum_sessions():
+        """定时兜底清理异常退出后残留的文学馆临时会话。"""
+        retention_seconds = max(settings.MUSEUM_SESSION_RETENTION_HOURS, 1) * 3600
+        interval_seconds = max(settings.MUSEUM_CLEANUP_INTERVAL_SECONDS, 60)
+
+        while True:
+            try:
+                cutoff = int(time.time()) - retention_seconds
+                await db_manager.delete_expired_museum_sessions(cutoff)
+            except Exception as exc:
+                log.error(f"清理文学馆临时会话失败: {exc}")
+
+            await asyncio.sleep(interval_seconds)
+
     # 调用统一配置函数组装模型配置
     configs = get_all_models()
 
@@ -62,8 +77,16 @@ async def lifespan(app: FastAPI):
 
     # 预热 ASR 客户端 (扔到后台线程执行，不阻塞 FastAPI 启动)
     asyncio.create_task(asyncio.to_thread(asr_shanghai_service.init_client_sync))
+    museum_cleanup_task = asyncio.create_task(cleanup_expired_museum_sessions())
 
-    yield  # 将控制权交还给 FastAPI，服务器正式开始接收请求
+    try:
+        yield  # 将控制权交还给 FastAPI，服务器正式开始接收请求
+    finally:
+        museum_cleanup_task.cancel()
+        try:
+            await museum_cleanup_task
+        except asyncio.CancelledError:
+            pass
 
     # 服务器停止时的清理逻辑
     log.info("ChatServer: HTTP 服务已停止，资源清理完毕。")
@@ -106,9 +129,13 @@ def standard_response(
 
 
 @app.post("/api/session")
-async def create_session(req: CreateSessionReq):
+async def create_session(req: CreateSessionReq, request: Request):
     """处理创建会话请求"""
-    session_id = await sdk_instance.create_session(req.model)
+    is_museum_client = request.headers.get("X-Xiaohu-Client") == "museum"
+    session_prefix = "museum_session" if is_museum_client else "session"
+    session_id = await sdk_instance.create_session(
+        req.model, session_prefix=session_prefix
+    )
     if not session_id:
         return standard_response(
             False, "create session failed (Internal Error)", status_code=500

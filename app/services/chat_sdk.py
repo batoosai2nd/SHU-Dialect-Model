@@ -70,10 +70,14 @@ class ChatSDK:
         return True
 
     # ================= 会话管理 =================
-    async def create_session(self, model_name: str) -> str:
+    async def create_session(
+        self, model_name: str, session_prefix: str = "session"
+    ) -> str:
         if not self._initialized:
             raise RuntimeError("ChatSDK is not initialized")
-        session_id = await self._session_manager.create_session(model_name)
+        session_id = await self._session_manager.create_session(
+            model_name, prefix=session_prefix
+        )
 
         # 【新增】：自动插入自我介绍开场白到数据库
         config = self._model_configs.get(model_name)

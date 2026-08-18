@@ -26,6 +26,7 @@ async def data_manager() -> AsyncGenerator[DataManager, None]:
     yield dm  # 将 dm 交给测试用例使用
 
     # 测试结束后的清理工作：删除测试数据库文件
+    await dm.engine.dispose()
     if os.path.exists(TEST_DB_PATH):
         os.remove(TEST_DB_PATH)
         log.info("测试完毕，已清理测试数据库文件。")
@@ -82,6 +83,27 @@ async def test_session_and_data_manager(session_manager: SessionManager):
         len(history_after_delete) == 0
     )  # 消息应该因为外键的 ON DELETE CASCADE 被一并清空
     log.info("--- Session & Data Manager 联动测试通过 ---")
+
+
+@pytest.mark.asyncio
+async def test_museum_session_cleanup(data_manager: DataManager):
+    """只清理过期的文学馆临时会话，保留普通会话和未过期临时会话。"""
+    session_manager = SessionManager(data_manager)
+    regular_id = await session_manager.create_session("deepseek-chat")
+    expired_museum_id = await session_manager.create_session(
+        "小沪(上海话互动)", prefix="museum_session"
+    )
+    active_museum_id = await session_manager.create_session(
+        "小沪(上海话互动)", prefix="museum_session"
+    )
+
+    await data_manager.update_session_timestamp(expired_museum_id, 100)
+    deleted_count = await data_manager.delete_expired_museum_sessions(200)
+
+    assert deleted_count == 1
+    assert await data_manager.get_session(expired_museum_id) is None
+    assert await data_manager.get_session(regular_id) is not None
+    assert await data_manager.get_session(active_museum_id) is not None
 
 
 # 测试用例 2：测试 LLMManager 的路由与注册机制

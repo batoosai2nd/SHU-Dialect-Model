@@ -30,7 +30,7 @@ class Message(BaseModel):
 
 # 模型配置结构 (Config)
 class LLMConfig(BaseModel):
-    # 注册给前端 UI 看的名字 (如: "小沪(上海话专家)")
+    # 注册给前端 UI 看的名字 (如: "小沪(上海话互动)")
     model_name: str 
     
     # 底层实际调用的模型名称 (如: "deepseek-chat")

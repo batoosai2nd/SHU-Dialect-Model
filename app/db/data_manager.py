@@ -121,6 +121,27 @@ class DataManager:
             log.info("DataManager: clearAllSessions - 删除所有会话成功")
             return True
 
+    async def delete_expired_museum_sessions(self, cutoff_timestamp: int) -> int:
+        """删除文学馆设备遗留的过期临时会话，不影响普通网页会话。"""
+        async with self.async_session_maker() as db_session:
+            stmt = delete(SessionModel).where(
+                SessionModel.session_id.startswith(
+                    "museum_session_", autoescape=True
+                ),
+                SessionModel.update_time < cutoff_timestamp,
+            )
+            result = await db_session.execute(stmt)
+            await db_session.commit()
+            deleted_count = result.rowcount or 0
+
+            if deleted_count:
+                log.info(
+                    "DataManager: 已清理 {} 个文学馆过期临时会话",
+                    deleted_count,
+                )
+
+            return deleted_count
+
     async def get_session_count(self) -> int:
         """获取会话总数"""
         async with self.async_session_maker() as db_session:

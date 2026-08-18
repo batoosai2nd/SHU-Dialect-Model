@@ -1,0 +1,231 @@
+:root {
+  --museum-blue: #1669a7;
+  --museum-blue-deep: #0b416f;
+  --museum-red: #c94545;
+  --museum-paper: #f6f1e7;
+}
+
+.museum-mode .sidebar,
+.museum-mode .toggle-sidebar-btn,
+.museum-mode .new-chat-btn,
+.museum-mode textarea#messageInput,
+.museum-mode .char-count,
+.museum-mode .send-btn,
+.museum-mode .asr-dropdown {
+  display: none !important;
+}
+
+.museum-mode .header {
+  min-height: 68px;
+  padding: 12px 28px;
+}
+
+.museum-mode .main-content {
+  height: calc(100vh - 68px);
+}
+
+.museum-mode .chat-area,
+.museum-mode .chat-interface {
+  width: 100%;
+}
+
+.museum-mode .messages-container {
+  max-height: calc(100vh - 286px);
+  padding: 24px clamp(24px, 5vw, 80px);
+}
+
+.museum-mode .message {
+  max-width: min(78%, 920px);
+}
+
+.museum-mode .message-content {
+  font-size: clamp(17px, 1.35vw, 23px);
+  line-height: 1.65;
+}
+
+.museum-mode .input-area {
+  min-height: 218px;
+  padding: 20px 24px 28px;
+}
+
+.museum-mode .input-footer,
+.museum-mode .right-buttons,
+.museum-mode .record-wrapper {
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100%;
+  margin: 0 !important;
+  display: flex !important;
+}
+
+.museum-mode .input-container {
+  width: min(100%, 900px);
+  margin: 0 auto !important;
+}
+
+.museum-mode .record-btn {
+  color: #fff;
+  touch-action: manipulation;
+  background: linear-gradient(145deg, var(--museum-blue), var(--museum-blue-deep));
+  border: 5px solid rgb(255 255 255 / 78%);
+  border-radius: 50%;
+  flex-direction: column;
+  gap: 7px;
+  width: 156px;
+  height: 156px;
+  padding: 16px;
+  font-size: 36px;
+  box-shadow: 0 14px 34px rgb(11 65 111 / 32%), inset 0 0 0 1px rgb(255 255 255 / 26%);
+}
+
+.museum-mode .record-btn::after {
+  content: "点击说话";
+  letter-spacing: 0.08em;
+  font-family: "Microsoft YaHei", sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.museum-mode .record-btn:hover:not(:disabled),
+.museum-mode .record-btn:active:not(:disabled) {
+  color: #fff;
+  background: linear-gradient(145deg, #2182c6, var(--museum-blue));
+  transform: translateY(-2px) scale(1.02);
+}
+
+.museum-mode .record-btn.recording {
+  color: #fff;
+  background: linear-gradient(145deg, #de5a5a, var(--museum-red));
+  animation: museum-recording-pulse 1.5s infinite;
+}
+
+.museum-mode .record-btn.recording::after {
+  content: "点击停止";
+}
+
+.museum-mode .record-btn:disabled {
+  cursor: wait;
+  background: #718096;
+  opacity: 0.78;
+  box-shadow: none;
+}
+
+.museum-mode .record-btn:disabled::after {
+  content: "小沪正在回答";
+  font-size: 15px;
+}
+
+@keyframes museum-recording-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(201 69 69 / 55%); }
+  70% { box-shadow: 0 0 0 24px rgb(201 69 69 / 0%); }
+  100% { box-shadow: 0 0 0 0 rgb(201 69 69 / 0%); }
+}
+
+#museum-start-screen {
+  z-index: 3000;
+  color: #17344d;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 34%, rgb(255 255 255 / 94%), rgb(246 241 231 / 92%) 45%, rgb(210 227 237 / 95%)),
+    url("/xiaohu-day.png") center / cover;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  position: fixed;
+  inset: 0;
+}
+
+#museum-start-screen.is-hidden {
+  display: none;
+}
+
+.museum-start-card {
+  background: rgb(255 255 255 / 64%);
+  border: 1px solid rgb(255 255 255 / 84%);
+  border-radius: 32px;
+  width: min(680px, calc(100vw - 64px));
+  padding: 48px 56px 38px;
+  box-shadow: 0 30px 80px rgb(18 68 100 / 18%);
+  backdrop-filter: blur(12px);
+}
+
+.museum-start-logo {
+  width: 180px;
+  height: auto;
+  margin-bottom: 20px;
+}
+
+.museum-start-card h1 {
+  margin: 0 0 12px;
+  font-size: clamp(34px, 4vw, 54px);
+  font-weight: 750;
+}
+
+.museum-start-card p {
+  color: #385d77;
+  margin: 0 0 30px;
+  font-size: clamp(18px, 2vw, 25px);
+  line-height: 1.65;
+}
+
+#museum-start-button {
+  color: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+  background: linear-gradient(145deg, var(--museum-blue), var(--museum-blue-deep));
+  border: 4px solid rgb(255 255 255 / 72%);
+  border-radius: 50%;
+  width: 172px;
+  height: 172px;
+  font-size: 25px;
+  font-weight: 750;
+  box-shadow: 0 16px 36px rgb(11 65 111 / 30%);
+}
+
+.museum-start-note {
+  color: #6c7f8c !important;
+  margin: 24px 0 0 !important;
+  font-size: 14px !important;
+}
+
+#museum-finish-button {
+  z-index: 2100;
+  color: #37566c;
+  cursor: pointer;
+  touch-action: manipulation;
+  background: rgb(255 255 255 / 76%);
+  border: 1px solid rgb(55 86 108 / 22%);
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 15px;
+  font-weight: 650;
+  position: fixed;
+  top: 14px;
+  right: 24px;
+  backdrop-filter: blur(8px);
+}
+
+#museum-idle-notice {
+  z-index: 2500;
+  color: #fff;
+  pointer-events: none;
+  background: rgb(15 48 70 / 88%);
+  border-radius: 999px;
+  padding: 12px 20px;
+  font-size: 16px;
+  opacity: 0;
+  transition: opacity 0.25s;
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+}
+
+#museum-idle-notice.is-visible {
+  opacity: 1;
+}
+
+@media (max-width: 720px) {
+  .museum-start-card { padding: 36px 24px 30px; }
+  .museum-mode .record-btn { width: 136px; height: 136px; }
+  #museum-finish-button { right: 14px; }
+}

@@ -26,7 +26,7 @@ def get_all_models() -> List[Union[APIConfig, OllamaConfig]]:
         ),
         # 提示词封装模型 - 小沪 (基于 DeepSeek)
         APIConfig(
-            model_name="小沪(上海话专家)",
+            model_name="小沪(上海话互动)",
             real_model="deepseek-chat",  # 底层引擎
             api_key=settings.DEEPSEEK_API_KEY,
             system_prompt=XIAOHU_PROMPT,  # 注入人设

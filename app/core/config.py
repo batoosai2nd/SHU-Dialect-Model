@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     ALI_ASR_APPKEY: str = ""
     ALI_ASR_TOKEN: str = ""
 
+    # 文学馆展陈会话：浏览器会主动删除正常结束的会话；这里负责兜底清理
+    # 设备异常断电、浏览器崩溃等情况下残留的临时会话。
+    MUSEUM_SESSION_RETENTION_HOURS: int = 24
+    MUSEUM_CLEANUP_INTERVAL_SECONDS: int = 3600
+
     class Config:
         # 指定读取的环境变量文件
         env_file = ".env"

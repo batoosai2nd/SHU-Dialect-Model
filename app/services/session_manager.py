@@ -25,9 +25,9 @@ class SessionManager:
         short_uuid = uuid4().hex[:8]  # 取 8 位 UUID
         return f"{prefix}_{current_time}_{short_uuid}"
 
-    async def create_session(self, model_name: str) -> str:
+    async def create_session(self, model_name: str, prefix: str = "session") -> str:
         """创建新会话并直接落库"""
-        session_id = self._generate_id("session")
+        session_id = self._generate_id(prefix)
 
         session = Session(
             session_id=session_id,
