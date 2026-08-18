@@ -86,6 +86,26 @@ class DataManager:
             await db_session.commit()
             return True
 
+    async def rename_session_model(self, old_name: str, new_name: str) -> int:
+        """迁移模型展示名，保证改名前创建的历史会话仍可继续使用。"""
+        async with self.async_session_maker() as db_session:
+            stmt = (
+                update(SessionModel)
+                .where(SessionModel.model_name == old_name)
+                .values(model_name=new_name)
+            )
+            result = await db_session.execute(stmt)
+            await db_session.commit()
+            updated_count = result.rowcount or 0
+
+            if updated_count:
+                log.info(
+                    "DataManager: 已迁移 {} 个旧版小沪会话模型名",
+                    updated_count,
+                )
+
+            return updated_count
+
     async def delete_session(self, session_id: str) -> bool:
         """删除指定会话 (由于设置了 cascade，关联的 messages 也会自动删除)"""
         async with self.async_session_maker() as db_session:

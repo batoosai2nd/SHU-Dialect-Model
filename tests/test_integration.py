@@ -106,6 +106,23 @@ async def test_museum_session_cleanup(data_manager: DataManager):
     assert await data_manager.get_session(active_museum_id) is not None
 
 
+@pytest.mark.asyncio
+async def test_legacy_xiaohu_session_model_migration(data_manager: DataManager):
+    """改名后，旧版小沪会话应迁移到新的模型展示名。"""
+    session_manager = SessionManager(data_manager)
+    session_id = await session_manager.create_session("小沪(上海话专家)")
+
+    updated_count = await data_manager.rename_session_model(
+        "小沪(上海话专家)",
+        "小沪(上海话互动)",
+    )
+    migrated_session = await data_manager.get_session(session_id)
+
+    assert updated_count == 1
+    assert migrated_session is not None
+    assert migrated_session.model_name == "小沪(上海话互动)"
+
+
 # 测试用例 2：测试 LLMManager 的路由与注册机制
 @pytest.mark.asyncio
 async def test_llm_manager_routing(llm_manager: LLMManager):

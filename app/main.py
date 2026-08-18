@@ -46,6 +46,10 @@ async def lifespan(app: FastAPI):
     # 初始化数据库
     db_manager = DataManager(settings.DATABASE_URL)
     await db_manager.init_database()
+    await db_manager.rename_session_model(
+        "小沪(上海话专家)",
+        "小沪(上海话互动)",
+    )
 
     # 实例化 Managers
     session_manager = SessionManager(db_manager)
